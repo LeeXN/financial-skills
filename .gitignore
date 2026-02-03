@@ -1,0 +1,6 @@
+openspec/
+.claude
+.opencode
+**/.env
+**/node_modules/
+**/dist

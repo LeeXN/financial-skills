@@ -1,0 +1,36 @@
+{
+  "name": "financial-data-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for financial data using Finnhub and Alpha Vantage APIs",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "financial-data-mcp": "./src/server.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc && node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "mcp",
+    "financial",
+    "stock",
+    "api",
+    "finnhub",
+    "alphavantage"
+  ],
+  "author": "Financial Skills Team",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}
