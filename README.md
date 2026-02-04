@@ -378,12 +378,51 @@ The MCP server provides these tools:
 
 ### Data Sources
 
-| Source | Features | Free Tier | API Key |
-|---------|----------|-----------|----------|
-| **Finnhub** | Real-time quotes, financials, news, SEC filings | 60 calls/min (no daily limit) | Get key at [finnhub.io](https://finnhub.io/register) |
-| **Alpha Vantage** | Historical prices, technical indicators, company overview | 25 calls/day (5 calls/min) | Get key at [alphavantage.co](https://www.alphavantage.co/support/#api-key) |
-| **TwelveData** | Real-time quotes, historical data, technical indicators | 800 calls/day | Get key at [twelvedata.com](https://twelvedata.com/pricing) |
-| **Tiingo** | IEX quotes, EOD prices, news, fundamentals | 500 requests/hour | Get key at [tiingo.com](https://www.tiingo.com/account/api/token) |
+The server supports 6 data sources covering both US and Chinese markets:
+
+| Source | Markets | Features | Free Tier | API Key |
+|--------|---------|----------|-----------|---------|
+| **Finnhub** | US, Global | Real-time quotes, financials, news, SEC filings | 60 calls/min | [finnhub.io](https://finnhub.io/register) |
+| **Alpha Vantage** | US | Historical prices, technical indicators, company overview | 25 calls/day | [alphavantage.co](https://www.alphavantage.co/support/#api-key) |
+| **TwelveData** | US, Global | Real-time quotes, historical data, technical indicators | 800 calls/day | [twelvedata.com](https://twelvedata.com/pricing) |
+| **Tiingo** | US | IEX quotes, EOD prices, news, fundamentals | 500 req/hour | [tiingo.com](https://www.tiingo.com/account/api/token) |
+| **Sina Finance** | China A-shares | Real-time quotes, K-line data, batch quotes | Unlimited | None required |
+| **East Money** | China A-shares | Real-time quotes, historical K-lines | Unlimited | None required |
+
+#### Platform Capabilities
+
+| Capability | Finnhub | Alpha Vantage | TwelveData | Tiingo | Sina | East Money |
+|------------|---------|---------------|------------|--------|------|------------|
+| Real-time Quotes | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Historical Prices | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Technical Indicators | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Company Overview | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Financial Statements | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| News | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Batch Quotes | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **US Stocks** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **China A-shares** | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+
+#### Market-Aware Routing
+
+The server automatically detects the market from the symbol and routes to appropriate sources:
+
+| Symbol Format | Market | Sources Used |
+|---------------|--------|--------------|
+| `AAPL`, `MSFT` | US | Finnhub, TwelveData, Tiingo, Alpha Vantage |
+| `601899.SH`, `600519.SS` | Shanghai | Sina, East Money |
+| `000001.SZ`, `300750.SZ` | Shenzhen | Sina, East Money |
+| `430047.BJ` | Beijing | Sina, East Money |
+
+**Example - Query Chinese Stock:**
+```json
+{
+  "name": "get_stock_quote",
+  "arguments": {
+    "symbol": "601899.SH"
+  }
+}
+```
 
 #### Smart Source Selection
 
@@ -393,12 +432,12 @@ The server automatically selects the optimal data source for each tool based on 
 
 | Tool | Priority Order |
 |------|---------------|
-| `get_stock_quote` | Finnhub, TwelveData, Tiingo, Alpha Vantage |
-| `get_stock_candles` | TwelveData, Finnhub, Tiingo |
+| `get_stock_quote` | Finnhub, TwelveData, Tiingo, Alpha Vantage (US) / Sina, East Money (China) |
+| `get_stock_candles` | TwelveData, Finnhub, Tiingo (US) / Sina, East Money (China) |
 | `get_technical_indicator` | TwelveData, Alpha Vantage |
-| `get_daily_prices` | Tiingo, Alpha Vantage, TwelveData |
+| `get_daily_prices` | Tiingo, Alpha Vantage, TwelveData (US) / Sina, East Money (China) |
 | `get_news` | Tiingo, Finnhub |
-| `get_quote` | TwelveData, Tiingo, Alpha Vantage |
+| `get_quote` | TwelveData, Tiingo, Alpha Vantage (US) / Sina, East Money (China) |
 | `get_company_overview` | Tiingo, Alpha Vantage |
 
 **Custom Priority Override:**

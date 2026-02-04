@@ -410,12 +410,51 @@ MCP 服务器提供以下工具：
 
 ### 数据来源
 
-| 来源 | 功能 | 免费层级 | API 密钥 |
-|---------|----------|-----------|----------|
-| **Finnhub** | 实时报价、财务数据、新闻、SEC 文件 | 60 次/分钟（无每日限制） | 在 [finnhub.io](https://finnhub.io/register) 获取密钥 |
-| **Alpha Vantage** | 历史价格、技术指标、公司概况 | 25 次/天（5 次/分钟） | 在 [alphavantage.co](https://www.alphavantage.co/support/#api-key) 获取密钥 |
-| **TwelveData** | 实时报价、历史数据、技术指标 | 800 次/天 | 在 [twelvedata.com](https://twelvedata.com/pricing) 获取密钥 |
-| **Tiingo** | IEX 报价、EOD 价格、新闻、基础数据 | 500 次/小时 | 在 [tiingo.com](https://www.tiingo.com/account/api/token) 获取密钥 |
+服务器支持 6 个数据源，覆盖美国和中国市场：
+
+| 来源 | 市场 | 功能 | 免费层级 | API 密钥 |
+|------|------|------|----------|----------|
+| **Finnhub** | 美国、全球 | 实时报价、财务数据、新闻、SEC 文件 | 60 次/分钟 | [finnhub.io](https://finnhub.io/register) |
+| **Alpha Vantage** | 美国 | 历史价格、技术指标、公司概况 | 25 次/天 | [alphavantage.co](https://www.alphavantage.co/support/#api-key) |
+| **TwelveData** | 美国、全球 | 实时报价、历史数据、技术指标 | 800 次/天 | [twelvedata.com](https://twelvedata.com/pricing) |
+| **Tiingo** | 美国 | IEX 报价、EOD 价格、新闻、基础数据 | 500 次/小时 | [tiingo.com](https://www.tiingo.com/account/api/token) |
+| **新浪财经** | A 股 | 实时报价、K 线数据、批量报价 | 无限制 | 无需密钥 |
+| **东方财富** | A 股 | 实时报价、历史 K 线 | 无限制 | 无需密钥 |
+
+#### 平台功能对比
+
+| 功能 | Finnhub | Alpha Vantage | TwelveData | Tiingo | 新浪 | 东方财富 |
+|------|---------|---------------|------------|--------|------|----------|
+| 实时报价 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 历史价格 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 技术指标 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| 公司概况 | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| 财务报表 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| 新闻 | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| 批量报价 | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **美股** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **A 股** | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+
+#### 市场感知路由
+
+服务器自动从股票代码检测市场并路由到相应的数据源：
+
+| 代码格式 | 市场 | 使用的数据源 |
+|----------|------|--------------|
+| `AAPL`、`MSFT` | 美国 | Finnhub、TwelveData、Tiingo、Alpha Vantage |
+| `601899.SH`、`600519.SS` | 上海 | 新浪、东方财富 |
+| `000001.SZ`、`300750.SZ` | 深圳 | 新浪、东方财富 |
+| `430047.BJ` | 北京 | 新浪、东方财富 |
+
+**示例 - 查询 A 股：**
+```json
+{
+  "name": "get_stock_quote",
+  "arguments": {
+    "symbol": "601899.SH"
+  }
+}
+```
 
 #### 智能源选择
 
@@ -424,13 +463,13 @@ MCP 服务器提供以下工具：
 **各工具的默认优先级顺序：**
 
 | 工具 | 优先级顺序 |
-|------|---------------|
-| `get_stock_quote` | Finnhub、TwelveData、Tiingo、Alpha Vantage |
-| `get_stock_candles` | TwelveData、Finnhub、Tiingo |
+|------|------------|
+| `get_stock_quote` | Finnhub、TwelveData、Tiingo、Alpha Vantage（美股）/ 新浪、东方财富（A 股） |
+| `get_stock_candles` | TwelveData、Finnhub、Tiingo（美股）/ 新浪、东方财富（A 股） |
 | `get_technical_indicator` | TwelveData、Alpha Vantage |
-| `get_daily_prices` | Tiingo、Alpha Vantage、TwelveData |
+| `get_daily_prices` | Tiingo、Alpha Vantage、TwelveData（美股）/ 新浪、东方财富（A 股） |
 | `get_news` | Tiingo、Finnhub |
-| `get_quote` | TwelveData、Tiingo、Alpha Vantage |
+| `get_quote` | TwelveData、Tiingo、Alpha Vantage（美股）/ 新浪、东方财富（A 股） |
 | `get_company_overview` | Tiingo、Alpha Vantage |
 
 **自定义优先级覆盖：**

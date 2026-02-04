@@ -68,7 +68,7 @@ export interface TechnicalIndicator {
   data: Record<string, number>;
 }
 
-export type ApiSource = 'finnhub' | 'alphavantage' | 'twelvedata' | 'tiingo';
+export type ApiSource = 'finnhub' | 'alphavantage' | 'twelvedata' | 'tiingo' | 'sina' | 'eastmoney';
 
 export type LogLevelType = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 

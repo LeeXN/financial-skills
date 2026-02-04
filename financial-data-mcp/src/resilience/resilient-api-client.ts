@@ -3,6 +3,8 @@ import { logger } from '../logger.js';
 import { KeyManager } from './api-key-manager.js';
 import { sourceRouter } from './source-router.js';
 import { isRateLimitError, shouldFailoverToNextSource } from './error-detection.js';
+import { SinaClient } from '../api/sina.js';
+import { EastMoneyClient } from '../api/eastmoney.js';
 
 export interface ApiClient {
   getStockQuote(symbol: string): Promise<any>;
@@ -45,6 +47,8 @@ export class ResilientApiClient implements ApiClient {
   public readonly alphavantageClient: any;
   public readonly twelvedataClient: any;
   public readonly tiingoClient: any;
+  public readonly sinaClient: SinaClient;
+  public readonly eastmoneyClient: EastMoneyClient;
 
   constructor(
     finnhubClient: any,
@@ -57,6 +61,8 @@ export class ResilientApiClient implements ApiClient {
     this.alphavantageClient = alphavantageClient;
     this.twelvedataClient = twelvedataClient;
     this.tiingoClient = tiingoClient;
+    this.sinaClient = new SinaClient();
+    this.eastmoneyClient = new EastMoneyClient();
     this.config = { ...DEFAULT_RESILIENCE_CONFIG, ...config };
     this.initializeKeyManagers();
   }
@@ -95,6 +101,10 @@ export class ResilientApiClient implements ApiClient {
         return this.twelvedataClient;
       case 'tiingo':
         return this.tiingoClient;
+      case 'sina':
+        return this.sinaClient;
+      case 'eastmoney':
+        return this.eastmoneyClient;
       default:
         return this.finnhubClient;
     }
@@ -102,13 +112,13 @@ export class ResilientApiClient implements ApiClient {
 
   async getStockQuote(symbol: string): Promise<any> {
     const executors = this.createExecutor({ symbol });
-    const result = await this.executeWithCascadingFailover('get_stock_quote', executors.get_stock_quote);
+    const result = await this.executeWithCascadingFailover('get_stock_quote', executors.get_stock_quote, symbol);
     return result.data;
   }
 
   async getStockCandles(symbol: string, resolution: string, from: number, to: number): Promise<any> {
     const executors = this.createExecutor({ symbol, resolution, from, to });
-    const result = await this.executeWithCascadingFailover('get_stock_candles', executors.get_stock_candles);
+    const result = await this.executeWithCascadingFailover('get_stock_candles', executors.get_stock_candles, symbol);
     return result.data;
   }
 
@@ -122,25 +132,25 @@ export class ResilientApiClient implements ApiClient {
 
   async getNews(symbol: string, category?: string, minId?: number): Promise<any> {
     const executors = this.createExecutor({ symbol, category, minId });
-    const result = await this.executeWithCascadingFailover('get_news', executors.get_news);
+    const result = await this.executeWithCascadingFailover('get_news', executors.get_news, symbol);
     return result.data;
   }
 
   async getDailyPrices(symbol: string, outputsize: 'compact' | 'full'): Promise<any> {
     const executors = this.createExecutor({ symbol, outputsize });
-    const result = await this.executeWithCascadingFailover('get_daily_prices', executors.get_daily_prices);
+    const result = await this.executeWithCascadingFailover('get_daily_prices', executors.get_daily_prices, symbol);
     return result.data;
   }
 
   async getQuote(symbol: string): Promise<any> {
     const executors = this.createExecutor({ symbol });
-    const result = await this.executeWithCascadingFailover('get_quote', executors.get_quote);
+    const result = await this.executeWithCascadingFailover('get_quote', executors.get_quote, symbol);
     return result.data;
   }
 
   async getCompanyOverview(symbol: string): Promise<any> {
     const executors = this.createExecutor({ symbol });
-    const result = await this.executeWithCascadingFailover('get_company_overview', executors.get_company_overview);
+    const result = await this.executeWithCascadingFailover('get_company_overview', executors.get_company_overview, symbol);
     return result.data;
   }
 
@@ -158,7 +168,7 @@ export class ResilientApiClient implements ApiClient {
 
   async getTechnicalIndicator(symbol: string, indicator: string, interval: string, time_period: string): Promise<any> {
     const executors = this.createExecutor({ symbol, indicator, interval, time_period });
-    const result = await this.executeWithCascadingFailover('get_technical_indicator', executors.get_technical_indicator);
+    const result = await this.executeWithCascadingFailover('get_technical_indicator', executors.get_technical_indicator, symbol);
     return result.data;
   }
 
@@ -242,9 +252,10 @@ export class ResilientApiClient implements ApiClient {
 
   async executeWithCascadingFailover<T>(
     toolName: string,
-    executor: SourceExecutor<T>
+    executor: SourceExecutor<T>,
+    symbol?: string
   ): Promise<CascadingFailoverResult<T>> {
-    const sources = sourceRouter.getSourcesForTool(toolName);
+    const sources = sourceRouter.getSourcesForTool(toolName, symbol);
     const attempts: FailoverAttempt[] = [];
     const overallStartTime = Date.now();
     

@@ -1,14 +1,17 @@
 import type { ApiSource } from '../types.js';
 import { logger } from '../logger.js';
+import { getMarketFromSymbol, type Market } from './market-router.js';
+
+const VALID_SOURCES: ApiSource[] = ['finnhub', 'alphavantage', 'twelvedata', 'tiingo', 'sina', 'eastmoney'];
 
 const OPTIMAL_SOURCE_MAP: Record<string, ApiSource[]> = {
-  'get_stock_quote': ['finnhub', 'twelvedata', 'tiingo', 'alphavantage'],
-  'get_stock_candles': ['twelvedata', 'finnhub', 'tiingo'],
-  'get_stock_price_history': ['twelvedata', 'finnhub', 'tiingo', 'alphavantage'],
+  'get_stock_quote': ['finnhub', 'twelvedata', 'tiingo', 'alphavantage', 'sina', 'eastmoney'],
+  'get_stock_candles': ['twelvedata', 'finnhub', 'tiingo', 'sina', 'eastmoney'],
+  'get_stock_price_history': ['twelvedata', 'finnhub', 'tiingo', 'alphavantage', 'sina', 'eastmoney'],
   'get_technical_indicator': ['twelvedata', 'alphavantage'],
-  'get_daily_prices': ['tiingo', 'alphavantage', 'twelvedata'],
+  'get_daily_prices': ['tiingo', 'alphavantage', 'twelvedata', 'sina', 'eastmoney'],
   'get_news': ['tiingo', 'finnhub'],
-  'get_quote': ['twelvedata', 'tiingo', 'alphavantage'],
+  'get_quote': ['twelvedata', 'tiingo', 'alphavantage', 'sina', 'eastmoney'],
   'get_company_overview': ['tiingo', 'alphavantage'],
   'get_company_info': ['finnhub', 'alphavantage', 'tiingo'],
   'get_financials': ['finnhub', 'alphavantage'],
@@ -19,6 +22,15 @@ const OPTIMAL_SOURCE_MAP: Record<string, ApiSource[]> = {
   'get_cash_flow': ['alphavantage'],
 };
 
+const MARKET_SOURCE_FILTER: Record<Market, ApiSource[]> = {
+  'US': ['finnhub', 'twelvedata', 'tiingo', 'alphavantage'],
+  'SH': ['sina', 'eastmoney'],
+  'SZ': ['sina', 'eastmoney'],
+  'BJ': ['sina', 'eastmoney'],
+  'HK': ['finnhub', 'twelvedata', 'sina'],
+  'UNKNOWN': ['finnhub', 'alphavantage', 'sina', 'eastmoney'],
+};
+
 function parseSourcePriorityEnv(toolName: string): ApiSource[] | null {
   const envKey = `SOURCE_PRIORITY_${toolName.toUpperCase()}`;
   const envValue = process.env[envKey];
@@ -27,7 +39,7 @@ function parseSourcePriorityEnv(toolName: string): ApiSource[] | null {
   
   const sources = envValue.split(',')
     .map(s => s.trim().toLowerCase() as ApiSource)
-    .filter(s => ['finnhub', 'alphavantage', 'twelvedata', 'tiingo'].includes(s));
+    .filter(s => VALID_SOURCES.includes(s));
   
   if (sources.length === 0) {
     logger.warn(`Invalid SOURCE_PRIORITY for ${toolName}, using default`, { envKey, envValue });
@@ -54,19 +66,29 @@ export class SourceRouter {
     }
   }
   
-  getSourcesForTool(toolName: string): ApiSource[] {
+  getSourcesForTool(toolName: string, symbol?: string): ApiSource[] {
+    let sources: ApiSource[];
+    
     const custom = this.customPriorities.get(toolName);
     if (custom) {
-      return custom;
+      sources = custom;
+    } else {
+      sources = OPTIMAL_SOURCE_MAP[toolName] || ['finnhub'];
     }
     
-    const defaultSources = OPTIMAL_SOURCE_MAP[toolName];
-    if (defaultSources) {
-      return defaultSources;
+    if (symbol) {
+      const market = getMarketFromSymbol(symbol);
+      const marketSources = MARKET_SOURCE_FILTER[market];
+      sources = sources.filter(s => marketSources.includes(s));
+      
+      if (sources.length === 0) {
+        sources = marketSources;
+      }
+      
+      logger.debug('Sources filtered by market', { toolName, symbol, market, sources });
     }
     
-    logger.warn(`No source mapping for tool, defaulting to finnhub`, { toolName });
-    return ['finnhub'];
+    return sources;
   }
   
   getDefaultSources(toolName: string): ApiSource[] {
@@ -79,6 +101,10 @@ export class SourceRouter {
   
   getAllToolNames(): string[] {
     return Object.keys(OPTIMAL_SOURCE_MAP);
+  }
+  
+  getMarketSources(market: Market): ApiSource[] {
+    return MARKET_SOURCE_FILTER[market] || MARKET_SOURCE_FILTER['UNKNOWN'];
   }
 }
 

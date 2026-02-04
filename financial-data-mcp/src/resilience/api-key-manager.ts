@@ -6,11 +6,12 @@
 import type { ResilienceConfig, ApiKeyInfo, KeyRotationEvent, ApiSource } from '../types.js';
 import { logger } from '../logger.js';
 
-const ENV_VAR_MAP: Record<ApiSource, string> = {
+const ENV_VAR_MAP: Partial<Record<ApiSource, string>> = {
   'finnhub': 'FINNHUB_API_KEY',
   'alphavantage': 'ALPHAVANTAGE_API_KEY',
   'twelvedata': 'TWELVEDATA_API_KEY',
   'tiingo': 'TIINGO_API_KEY',
+  // sina and eastmoney don't use API keys - they are free public APIs
 };
 
 export class KeyManager {
